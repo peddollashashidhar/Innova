@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-backend
+  namespace: innova
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-backend
+  template:
+    metadata:
+      labels:
+        app: demo-backend
+    spec:
+      containers:
+        - name: demo
+          image: "${aws_account_id}:${aws_region}/${ecr_backend_repo}:" # placeholder - replace when applying
+          ports:
+            - containerPort: 8080

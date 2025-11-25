@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: angular-frontend
+  namespace: innova
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: angular-frontend
+  template:
+    metadata:
+      labels:
+        app: angular-frontend
+    spec:
+      containers:
+        - name: angular
+          image: "PLACEHOLDER_FRONTEND_IMAGE" # replace with ECR URL after pushing
+          ports:
+            - containerPort: 80

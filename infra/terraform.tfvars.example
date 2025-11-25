@@ -1,0 +1,20 @@
+region = "us-east-1"
+aws_profile = "default"
+cluster_name = "innova-eks"
+node_group_desired = 2
+node_instance_type = "t3.medium"
+
+# Example AWS Secrets Manager mappings for External Secrets Operator.
+# Two supported formats are shown below.
+# 1) Simple string -> whole secret mapped to k8s secret key `value`:
+# aws_secrets_to_sync = {
+#   "jwt-secret" = "arn:aws:secretsmanager:us-east-1:123456789012:secret:jwt-secret"
+# }
+#
+# 2) Object with `arn` and `properties` -> map JSON properties into separate k8s keys:
+# aws_secrets_to_sync = {
+#   "db-credentials" = {
+#     arn       = "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-creds"
+#     properties = ["username", "password"]
+#   }
+# }
