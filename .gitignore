@@ -1,0 +1,24 @@
+# Operating system
+.DS_Store
+
+# Node
+node_modules/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*.tfvars
+*.tfvars.json
+
+# Local IDE
+.vscode/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
