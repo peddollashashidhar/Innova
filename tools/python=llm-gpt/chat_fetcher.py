@@ -5,10 +5,10 @@ Simple CLI to send prompts to the OpenAI Chat API and store responses in a CSV f
 
 Usage examples:
   # single prompt
-  python tools/chat_fetcher/chat_fetcher.py --prompt "Translate to French: Hello" --output responses.csv
+  python tools/python=llm-gpt/chat_fetcher.py --prompt "Translate to French: Hello" --output responses.csv
 
   # from file (one prompt per line)
-  python tools/chat_fetcher/chat_fetcher.py --prompts-file prompts.txt --output responses.csv
+  python tools/python=llm-gpt/chat_fetcher.py --prompts-file prompts.txt --output responses.csv
 
 Set your OpenAI API key in environment variable `OPENAI_API_KEY` or in a `.env` file.
 """
