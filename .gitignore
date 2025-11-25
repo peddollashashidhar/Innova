@@ -1,0 +1,12 @@
+# ignore common local build artifacts and provider binaries
+.terraform/
+infra/.terraform/
+demo/build/
+node_modules/
+*.log
+dist/
+build/
+.env
+venv/
+.venv/
+__pycache__/
