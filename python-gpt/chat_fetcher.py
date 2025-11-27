@@ -29,10 +29,47 @@ except Exception:
 
 try:
     import openai
-    from openai.error import RateLimitError, ServiceUnavailableError, APIError, Timeout
-except Exception as e:
+    # The openai package moved/renamed some internals across versions. Try the
+    # old public import path first, then fall back to the newer internal
+    # exceptions module if necessary. If neither is available, provide
+    # lightweight fallback exception types so the rest of the module can still
+    # import (tests use mock mode and do not require the live client).
+    try:
+        from openai.error import RateLimitError, ServiceUnavailableError, APIError, Timeout
+    except Exception:
+        try:
+            from openai._exceptions import RateLimitError, ServiceUnavailableError, APIError, Timeout
+        except Exception:
+            # Define fallback exception classes
+            class RateLimitError(Exception):
+                pass
+
+            class ServiceUnavailableError(Exception):
+                pass
+
+            class APIError(Exception):
+                pass
+
+            class Timeout(Exception):
+                pass
+except Exception:
     print("Missing required dependency 'openai'. Install from requirements.txt and try again.")
     raise
+
+
+# Simple in-process mock objects used by CI (integration-mock) when OPENAI_MOCK=1
+class _MockResp:
+    def __init__(self, content: str, model: str = "mock-model", id_: str = "mock-id"):
+        self.choices = [type("_M", (), {"message": type("_m", (), {"content": content})})()]
+        self.model = model
+        self.id = id_
+
+
+class _MockChatCompletion:
+    @staticmethod
+    def create(model, messages, temperature, max_tokens):
+        prompt = messages[0]["content"] if messages else ""
+        return _MockResp(content=f"MOCK: {prompt}", model=model, id_="mock-1")
 
 
 def load_env():
@@ -57,6 +94,11 @@ def read_prompts_from_file(path: str) -> List[str]:
 def chat_completion_with_retries(prompt: str, model: str, temperature: float, max_tokens: int, retries: int = 5):
     attempt = 0
     backoff = 1.0
+    # If CI or developer wants to run a zero-cost integration test, set OPENAI_MOCK=1
+    if os.getenv("OPENAI_MOCK") in ("1", "true", "True", "yes"):
+        # use the in-process mock implementation
+        return _MockChatCompletion.create(model=model, messages=[{"role": "user", "content": prompt}], temperature=temperature, max_tokens=max_tokens)
+
     while True:
         try:
             resp = openai.ChatCompletion.create(
@@ -102,8 +144,15 @@ def main(argv: List[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     load_env()
-    api_key = get_api_key()
-    openai.api_key = api_key
+    # If using mock mode in CI, skip requiring an API key so tests can run
+    # without secrets. Otherwise require OPENAI_API_KEY to be set.
+    if os.getenv("OPENAI_MOCK") in ("1", "true", "True", "yes"):
+        api_key = None
+    else:
+        api_key = get_api_key()
+
+    if api_key:
+        openai.api_key = api_key
 
     if args.prompts_file:
         prompts = read_prompts_from_file(args.prompts_file)

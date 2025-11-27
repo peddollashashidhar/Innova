@@ -34,3 +34,20 @@ Notes
 
 - The defaults use gpt-3.5-turbo; set OPENAI_MODEL to use a different model.
 - Output CSV will contain columns: prompt, response, model, created_at, id, status.
+
+
+How you can check locally (commands)
+
+Run unit tests:
+
+cd python-gpt
+python -m pytest -q
+Build & run the container in mock mode:
+
+docker build -t python-gpt:pr-mock-local .
+mkdir -p pr-outputs
+docker run --rm -e OPENAI_MOCK=1 -v "
+(pwd)/pr − outputs :
+/app/outputs" − v"
+(pwd)/pr−outputs:/app/outputs"−v"(pwd)/sample_prompts.txt:/app/sample_prompts.txt" python-gpt:pr-mock-local --prompts-file sample_prompts.txt --output /app/outputs/pr.csv
+cat pr-outputs/pr.csv
