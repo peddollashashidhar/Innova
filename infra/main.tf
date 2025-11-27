@@ -3,7 +3,10 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 4.0"
+      # Pin to a stable provider major series so validation & plans remain
+      # predictable across environments. Using 6.x since local tests used
+      # a 6.x provider.
+      version = "~> 6.0"
     }
   }
 }
@@ -20,49 +23,143 @@ your needs (node groups, Fargate, RBAC, IRSA, etc.) before `apply`.
 
 data "aws_availability_zones" "available" {}
 
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 3.0"
+# Lightweight VPC resources used for simple cluster deployments. This avoids
+# deep dependency on a specific external VPC module version which caused
+# provider mismatch errors during validation.
+resource "aws_vpc" "this" {
+  cidr_block = var.vpc_cidr
 
-  name = "${var.cluster_name}-vpc"
-  cidr = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
-  azs             = slice(data.aws_availability_zones.available.names, 0, 3)
-  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  private_subnets = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
-
-  tags = { ManagedBy = "terraform" }
+  tags = {
+    Name      = "${var.cluster_name}-vpc"
+    ManagedBy = "terraform"
+  }
 }
 
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 19.0"
+resource "aws_subnet" "subnets" {
+  count = 3
 
-  cluster_name    = var.cluster_name
-  cluster_version = "1.28"
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 1)
+  availability_zone = element(data.aws_availability_zones.available.names, count.index)
+  map_public_ip_on_launch = true
 
-  subnet_ids = module.vpc.private_subnets
+  tags = {
+    Name = "${var.cluster_name}-subnet-${count.index + 1}"
+  }
+}
 
-  eks_managed_node_groups = {
-    default = {
-      desired_capacity = var.node_group_desired
-      max_capacity     = var.node_group_desired + 1
-      min_capacity     = 1
-      instance_types   = [var.node_instance_type]
-    }
+locals {
+  computed_subnet_ids = aws_subnet.subnets[*].id
+}
+
+##########################
+# Minimal EKS cluster
+##########################
+
+# IAM role for EKS cluster
+resource "aws_iam_role" "eks_cluster_role" {
+  name = "${var.cluster_name}-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = { Service = "eks.amazonaws.com" }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
+  role       = aws_iam_role.eks_cluster_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSServicePolicy" {
+  role       = aws_iam_role.eks_cluster_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+}
+
+# EKS Cluster
+resource "aws_eks_cluster" "this" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.eks_cluster_role.arn
+
+  vpc_config {
+    subnet_ids = local.computed_subnet_ids
+    endpoint_public_access = true
   }
 
-  tags = { ManagedBy = "terraform" }
+  # minimal; change as you need
+  version = "1.28"
+
+  tags = {
+    Name      = var.cluster_name
+    ManagedBy = "terraform"
+  }
+}
+
+# IAM role for nodes
+resource "aws_iam_role" "eks_node_role" {
+  name = "${var.cluster_name}-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = { Service = "ec2.amazonaws.com" }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "node_AmazonEKSWorkerNodePolicy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOnly" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_iam_role_policy_attachment" "node_AmazonEKS_CNI_Policy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+# managed node group
+resource "aws_eks_node_group" "default" {
+  cluster_name    = aws_eks_cluster.this.name
+  node_group_name = "${var.cluster_name}-node-group"
+  node_role_arn   = aws_iam_role.eks_node_role.arn
+
+  subnet_ids = local.computed_subnet_ids
+
+  scaling_config {
+    desired_size = var.node_group_desired
+    min_size     = 1
+    max_size     = var.node_group_desired + 1
+  }
+
+  instance_types = [var.node_instance_type]
 }
 
 output "cluster_endpoint" {
-  value = module.eks.cluster_endpoint
+  value = aws_eks_cluster.this.endpoint
 }
 
 output "kubeconfig_certificate_authority_data" {
-  value = module.eks.cluster_certificate_authority_data
+  value = aws_eks_cluster.this.certificate_authority[0].data
 }
 
 output "cluster_name" {
-  value = module.eks.cluster_name
+  value = aws_eks_cluster.this.name
 }
