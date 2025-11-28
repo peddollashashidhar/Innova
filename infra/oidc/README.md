@@ -13,7 +13,7 @@ What it creates
 - An IAM role with a trust policy limited to the repo (and references/branches) you specify
 - Two example inline policies attached to the role:
   - `tf-state-access`: allows the role to read/write state, use the DynamoDB lock and use the KMS key
-  - `terraform-manage-example`: a starter policy that demonstrates the extra permissions Terraform may need to create resources (intentionally wide; tighten before using)
+  - `terraform-manage-scoped`: a scoped example policy attached to the OIDC role that grants the minimal common actions required to manage EKS and the supporting VPC/network resources in this repo. Review and tighten further for production.
 
 How to use (example)
 
@@ -38,7 +38,7 @@ terraform {
 
 Security notes
 
-- Replace the broad `terraform-manage-example` with a least-privilege policy scoped to only the resources Terraform manages; for example restrict EC2/EKS resources to ARNs matching your project setup.
+- The module includes a `terraform-manage-scoped` inline policy. It grants a focused set of EKS, EC2/VPC, AutoScaling, ELB, IAM (tag-scoped) and CloudWatch Logs permissions needed to bootstrap the cluster and nodegroups. For production lock-down, further scope ARNs and add more precise conditions.
 - Optionally add conditions to the role assume policy for `token.actions.githubusercontent.com:aud` and other checks.
 - Keep the S3 bucket name unique and protected — enable bucket policies if you want to restrict access by account or principal.
 
@@ -54,4 +54,8 @@ Steps:
 1. The job will assume the role via OIDC and run `aws sts get-caller-identity`.
 
 If the run succeeds you'll see the identity JSON printed in the logs. If it fails, verify the role trust policy and that the `github_repo` value in this module matches the repo that runs the workflow.
+
+Next: least-privilege
+
+The role created by this module now includes an example `terraform-manage-scoped` policy which narrows the permissions Terraform needs to create the EKS cluster, the node group and the VPC/subnet resources used by that cluster. This is intentionally conservative but still practical — for production environments I recommend auditing the actions actually used by your Terraform runs and further restricting actions and resources accordingly.
 

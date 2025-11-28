@@ -165,29 +165,141 @@ resource "aws_iam_role_policy" "tf_state_access" {
 # Optional: a starting policy for resource management
 # NOTE: Terraform may need many permissions to create EKS, EC2, IAM, AutoScaling etc.
 # The policy below is an example that is intentionally broad to allow bootstrapping; tighten this policy before using in production.
-resource "aws_iam_role_policy" "terraform_manage_example" {
-  name = "terraform-manage-example"
+resource "aws_iam_role_policy" "terraform_manage_scoped" {
+  name = "terraform-manage-scoped"
   role = aws_iam_role.github_actions_role.id
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
+      # EKS management (create/update/delete clusters & nodegroups)
       {
-        Sid = "AllowTerraformCrud",
+        Sid = "EKSManagement",
         Effect = "Allow",
         Action = [
-          "ec2:*",
-          "eks:*",
-          "iam:*",
-          "autoscaling:*",
-          "elasticloadbalancing:*",
-          "elasticfilesystem:*",
-          "elasticache:*",
-          "rds:*",
-          "route53:*",
-          "cloudwatch:*",
-          "logs:*",
-          "kms:*"
+          "eks:CreateCluster",
+          "eks:DeleteCluster",
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:UpdateClusterConfig",
+          "eks:UpdateClusterVersion",
+          "eks:CreateNodegroup",
+          "eks:DeleteNodegroup",
+          "eks:DescribeNodegroup",
+          "eks:ListNodegroups",
+          "eks:TagResource",
+          "eks:UntagResource"
+        ],
+        Resource = "*"
+      },
+
+      # EC2 / VPC networking operations (create subnets, security-groups, ENIs), allow describe broadly
+      {
+        Sid = "EC2Networking",
+        Effect = "Allow",
+        Action = [
+          "ec2:CreateVpc",
+          "ec2:DeleteVpc",
+          "ec2:CreateSubnet",
+          "ec2:DeleteSubnet",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+          "ec2:Describe*",
+          "ec2:CreateNetworkInterface",
+          "ec2:DeleteNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:AttachNetworkInterface",
+          "ec2:DetachNetworkInterface",
+          "ec2:AllocateAddress",
+          "ec2:ReleaseAddress"
+        ],
+        Resource = "*",
+        Condition = {
+          StringEquals = {
+            "aws:RequestTag/ManagedBy" = "terraform"
+          }
+        }
+      },
+
+      # AutoScaling and instance-related actions (managed nodegroups)
+      {
+        Sid = "AutoScaling",
+        Effect = "Allow",
+        Action = [
+          "autoscaling:CreateAutoScalingGroup",
+          "autoscaling:UpdateAutoScalingGroup",
+          "autoscaling:DeleteAutoScalingGroup",
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ],
+        Resource = "*"
+      },
+
+      # ELB (load balancers used by Kubernetes Service type=LoadBalancer)
+      {
+        Sid = "ELB",
+        Effect = "Allow",
+        Action = [
+          "elasticloadbalancing:CreateLoadBalancer",
+          "elasticloadbalancing:DeleteLoadBalancer",
+          "elasticloadbalancing:CreateTargetGroup",
+          "elasticloadbalancing:DeleteTargetGroup",
+          "elasticloadbalancing:RegisterTargets",
+          "elasticloadbalancing:DeregisterTargets",
+          "elasticloadbalancing:Describe*"
+        ],
+        Resource = "*"
+      },
+
+      # IAM operations required to create roles for cluster/nodegroups/IRSA; scoped with request tag requirement
+      {
+        Sid = "IAMScoped",
+        Effect = "Allow",
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:PassRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRole",
+          "iam:ListRoles"
+        ],
+        Resource = "*",
+        Condition = {
+          StringEquals = {
+            "aws:RequestTag/ManagedBy" = "terraform"
+          }
+        }
+      },
+
+      # CloudWatch / Logs used by cluster & nodes
+      {
+        Sid = "CloudWatchLogs",
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+          "logs:DescribeLogGroups"
+        ],
+        Resource = "*"
+      },
+
+      # Allow minimal SSM for node management tasks
+      {
+        Sid = "SSM",
+        Effect = "Allow",
+        Action = [
+          "ssm:DescribeInstanceInformation",
+          "ssm:GetConnectionStatus"
         ],
         Resource = "*"
       }
