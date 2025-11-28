@@ -55,6 +55,21 @@ Steps:
 
 If the run succeeds you'll see the identity JSON printed in the logs. If it fails, verify the role trust policy and that the `github_repo` value in this module matches the repo that runs the workflow.
 
+Terraform plan verification (safe)
+
+There's also a second verification workflow that runs a non-destructive Terraform plan inside the `infra/` folder using the OIDC role. It is a quick way to confirm the role has the permissions needed for Terraform to plan your deployment.
+
+How to run the verification plan
+
+1. Add the role ARN to `AWS_ROLE_TO_ASSUME` repo secret (only the ARN).
+
+2. From the Actions tab choose `Terraform OIDC — verify plan (safe)` and Run workflow.
+
+  - Inputs: region (defaults to ap-south-1), use_remote_backend (defaults to false). Leave `use_remote_backend=false` to run a read-only verification that does not use the configured backend.
+
+3. Inspect the job logs and download the `infra-tfplan` artifact for details. No changes are applied by this workflow.
+
+If the plan fails due to missing permissions, the logs will show the failed action(s) and you can add only the required minimal permissions to the role before trying again.
 Next: least-privilege
 
 The role created by this module now includes an example `terraform-manage-scoped` policy which narrows the permissions Terraform needs to create the EKS cluster, the node group and the VPC/subnet resources used by that cluster. This is intentionally conservative but still practical — for production environments I recommend auditing the actions actually used by your Terraform runs and further restricting actions and resources accordingly.
