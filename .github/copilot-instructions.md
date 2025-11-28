@@ -27,7 +27,7 @@ This repository contains a full-stack demo application with:
   - Init: `terraform init` (in `infra/`)
   - Plan: `terraform plan -out=tfplan`
   - Apply: `terraform apply tfplan`
-  - Use `infra/scripts/refresh-aws-creds.ps1` for AWS credential management (supports `aws-vault` and SSO)
+  - Prefer the POSIX helper `infra/scripts/refresh-aws-creds.sh` for AWS credential management (supports `aws-vault` and SSO). Windows users should prefer using WSL or Git Bash and run the POSIX helper from there.
 - **Kubernetes**:
   - Update image tags in `k8s/` or `helm/` after pushing images
   - Apply manifests: `kubectl apply -f k8s/`
@@ -37,7 +37,7 @@ This repository contains a full-stack demo application with:
 - **No hardcoded AWS credentials**: Use `aws-vault` or SSO for local dev; OIDC for CI.
 - **Terraform modules**: Infra is modularized under `infra/modules/` (ecr, eks, vpc).
 - **Separation of concerns**: Frontend, backend, and infra are in distinct folders.
-- **Scripts**: Use PowerShell scripts in `infra/scripts/` for credential refresh and automation.
+- **Scripts**: POSIX-first helpers are available under `infra/scripts/` (bash). PowerShell wrappers are provided only to forward to WSL where required.
 - **Kubernetes**: Manifests and Helm charts are kept in `k8s/` and `helm/` respectively; update image references after each build.
 
 ## Integration Points
@@ -48,7 +48,7 @@ This repository contains a full-stack demo application with:
 ## References
 - `angular-app/README.md` for Angular commands
 - `infra/README.md` for Terraform and AWS setup
-- `infra/scripts/refresh-aws-creds.ps1` for credential management
+ - POSIX helper `infra/scripts/refresh-aws-creds.sh` for credential management. Windows users can use WSL or Git Bash to run the POSIX helpers.
 - `k8s/` and `helm/` for deployment manifests
 
 ---

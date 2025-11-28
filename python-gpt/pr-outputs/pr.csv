@@ -1,0 +1,4 @@
+prompt,response,model,created_at,id,status
+Hello,MOCK: Hello,gpt-3.5-turbo,2025-11-27T03:52:10.083658Z,mock-1,ok
+Translate to Spanish: How are you?,MOCK: Translate to Spanish: How are you?,gpt-3.5-turbo,2025-11-27T03:52:10.099896Z,mock-1,ok
+Explain the solar system in one sentence,MOCK: Explain the solar system in one sentence,gpt-3.5-turbo,2025-11-27T03:52:10.114921Z,mock-1,ok
