@@ -1,5 +1,4 @@
 name: Verify GitHub OIDC role (safe)
-
 on:
   workflow_dispatch:
     inputs:
@@ -7,24 +6,20 @@ on:
         description: 'AWS region to validate against (defaults to ap-south-1)'
         required: false
         default: 'ap-south-1'
-
 permissions:
   id-token: write
   contents: read
-
 jobs:
   verify-oidc:
     name: Assume OIDC role and validate
     runs-on: ubuntu-latest
-
     steps:
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ github.event.inputs.region }}
           role-session-name: verify-oidc-${{ github.run_id }}
-
       - name: Verify credentials
         run: |
           echo "Checking identity..."

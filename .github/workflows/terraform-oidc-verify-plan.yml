@@ -20,48 +20,39 @@ jobs:
   terraform-plan-verify:
     name: Terraform plan (verify only)
     runs-on: ubuntu-latest
+    env:
+      TF_WORKDIR: infra/terraform/envs/dev
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ github.event.inputs.region }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: '1.5.0'
+          terraform_version: '1.8.5'
 
-      - name: Terraform init & plan (infra/)
-        working-directory: infra
+      - name: Terraform init & plan (safe)
         env:
           TF_IN_AUTOMATION: true
         run: |
           set -euo pipefail
-          # init without backend by default so the job is read-only and safe
-          if [[ "${{ github.event.inputs.use_remote_backend }}" == 'true' ]]; then
-            echo "Initializing with remote backend (ensure it exists)"
-            terraform init -input=false
-          else
-            echo "Initializing without remote backend (safe verification)"
-            terraform init -input=false -backend=false
-          fi
-
-          terraform validate -no-color || true
-
-          # Attempt a plan in read-only/dry-run mode
-          terraform plan -out=tfplan -input=false -no-color || true
+          terraform -chdir="${TF_WORKDIR}" init -input=false -backend=false
+          terraform -chdir="${TF_WORKDIR}" validate -no-color || true
+          terraform -chdir="${TF_WORKDIR}" plan -out=tfplan -input=false -no-color || true
 
       - name: Upload plan artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: infra-tfplan
-          path: infra/tfplan
+          name: dev-env-tfplan
+          path: infra/terraform/envs/dev/tfplan
 
       - name: Print note
-        run: echo "Plan finished — check the logs and the artifact infra-tfplan for details. This workflow runs a non-destructive plan (no apply)."
+        run: echo "Plan finished — check the logs and the artifact dev-env-tfplan for details. This workflow runs a non-destructive plan (no apply)."

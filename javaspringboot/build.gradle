@@ -10,7 +10,7 @@ description = 'Demo project for Spring Boot'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(25)
 	}
 }
 
@@ -26,24 +26,16 @@ repositories {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-h2console'
-	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	implementation 'org.springframework.boot:spring-boot-starter-webservices'
 	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'com.h2database:h2'
-	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-	testImplementation "com.sun.xml.ws:jaxws-rt:2.3.7"
-    annotationProcessor 'org.projectlombok:lombok'
-	compileOnly "com.sun.xml.ws:jaxws-rt:2.3.7"
-    testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-jdbc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webservices-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
