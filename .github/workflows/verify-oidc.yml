@@ -1,4 +1,4 @@
-name: Verify GitHub OIDC role (safe) 
+name: Verify GitHub OIDC role (safe)
 on:
   workflow_dispatch:
     inputs:
@@ -24,3 +24,4 @@ jobs:
         run: |
           echo "Checking identity..."
           aws sts get-caller-identity
+          # test push to git
