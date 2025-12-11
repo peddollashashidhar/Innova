@@ -1,4 +1,4 @@
-name: Verify GitHub OIDC role (safe)
+name: Verify GitHub OIDC role (safe) 
 on:
   workflow_dispatch:
     inputs:
